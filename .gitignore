@@ -1,0 +1,27 @@
+# Arquivos de ambiente e credenciais
+.env
+*.env
+
+# Arquivos de cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+
+# Ambientes virtuais
+venv/
+.venv/
+env/
+ENV/
+
+# Arquivos de IDE
+.idea/
+.vscode/
+
+# Arquivos temporários
+*.log
+*.tmp
+
+# Arquivos específicos do sistema
+.DS_Store
+Thumbs.db
