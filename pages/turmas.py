@@ -10,7 +10,7 @@ def exibir_pagina_turmas():
     st.header("Gestão de Turmas")
     
     # Carregar dados básicos - utilizados no dashboard e em outras funções
-    with st.spinner("Carregando dados. Aguarde um minuto"):
+    with st.spinner("Carregando dados. Aguarde um minuto..."):
         df_alunos_todas, df_turmas_todas, df_aulas_todas = carregar_dados_basicos()
     
     # Filtros
