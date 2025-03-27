@@ -276,9 +276,86 @@ def exibir_pagina_turmas():
             # Exibir gráfico
             st.plotly_chart(fig, use_container_width=True)
 
+            # Criar gráfico de barras para número de alunos por modalidade
+            fig_alunos = px.bar(
+                modalidade_counts,
+                x='modalidade',
+                y='total_alunos',
+                title='Número de Alunos por Modalidade',
+                labels={'modalidade': 'Modalidade', 'total_alunos': 'Número de Alunos'},
+                color='modalidade',
+                height=400
+            )
+            
+            # Configurar layout
+            fig_alunos.update_layout(
+                xaxis_title='Modalidade',
+                yaxis_title='Número de Alunos',
+                showlegend=False
+            )
+            
+            # Exibir gráfico
+            st.plotly_chart(fig_alunos, use_container_width=True)
+
+            # Criar mapa de calor por Dia da Semana e Modalidade
+            st.subheader("Distribuição de Turmas por Dia da Semana e Modalidade")
+            
+            # Verificar se temos as colunas necessárias
+            if 'Dia da semana' in df_exibir.columns and 'Modalidade' in df_exibir.columns:
+                # Criar um dataframe de contagem para o mapa de calor
+                heatmap_data = df_exibir.groupby(['Dia da semana', 'Modalidade']).size().reset_index(name='Contagem')
+                
+                # Pivotear o dataframe para formato adequado ao mapa de calor (invertendo linhas e colunas)
+                heatmap_pivot = heatmap_data.pivot_table(
+                    values='Contagem', 
+                    index='Modalidade',  # Agora modalidade está nas linhas
+                    columns='Dia da semana',  # Dias da semana nas colunas
+                    fill_value=0
+                )
+                
+                # Ordenar os dias da semana corretamente
+                ordem_dias = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo']
+                heatmap_pivot = heatmap_pivot.reindex(columns=ordem_dias)  # Reordenar colunas em vez de linhas
+                
+                # Criar o mapa de calor
+                fig_heatmap = px.imshow(
+                    heatmap_pivot,
+                    labels=dict(x="Dia da Semana", y="Modalidade", color="Número de Turmas"),  # Invertido
+                    x=heatmap_pivot.columns,
+                    y=heatmap_pivot.index,
+                    color_continuous_scale="Viridis",
+                    title="Mapa de Calor: Turmas por Modalidade e Dia da Semana",
+                    height=500
+                )
+                
+                # Ajustar layout
+                fig_heatmap.update_layout(
+                    xaxis_title=None,  # Remover título do eixo X
+                    yaxis_title=None,  # Remover título do eixo Y
+                    xaxis={'side': 'top'}
+                )
+                
+                # Adicionar anotações com os valores
+                for i, modalidade in enumerate(heatmap_pivot.index):
+                    for j, dia in enumerate(heatmap_pivot.columns):
+                        valor = heatmap_pivot.iloc[i, j]
+                        if valor > 0:  # Só mostrar valores maiores que zero
+                            fig_heatmap.add_annotation(
+                                x=dia,  # Invertido
+                                y=modalidade,  # Invertido
+                                text=str(int(valor)),
+                                showarrow=False,
+                                font=dict(color="white" if valor > 3 else "black")
+                            )
+                
+                # Exibir o mapa de calor
+                st.plotly_chart(fig_heatmap, use_container_width=True)
+                
+            else:
+                st.warning("Não foi possível criar o mapa de calor. Verifique se as colunas 'Dia da semana' e 'Modalidade' estão disponíveis.")
 
             # Exibir média de alunos por modalidade específica
-            st.write("Média de Alunos por Modalidade")
+            st.write("Média de Alunos por Turma de Modalidade")
             
             # Criar colunas para exibir as métricas
             col1, col2, col3 = st.columns(3)

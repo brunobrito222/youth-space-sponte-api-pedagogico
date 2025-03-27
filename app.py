@@ -43,7 +43,7 @@ def verificar_credenciais():
 
 # Configuração da página
 st.set_page_config(
-    page_title="Dashboard Sponte",
+    page_title="Dashboard Pedagógico",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -65,7 +65,9 @@ if not verificar_credenciais():
     st.stop()
 
 # Título principal
-st.title("Dashboard Sponte")
+st.title("Dashboard Pedagógico")
+# Subtítulo
+st.subheader("Acesso em tempo real via API Sponte")
 
 # Sidebar para navegação e filtros
 st.sidebar.title("Navegação")
