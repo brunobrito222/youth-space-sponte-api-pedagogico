@@ -151,8 +151,15 @@ def exibir_pagina_aulas(data_inicio=None, data_fim=None):
                     x='Nome do Professor',
                     y='Quantidade de Aulas',
                     title='Quantidade de Aulas por Professor',
-                    labels={'Nome do Professor': 'Professor', 'Quantidade de Aulas': 'Quantidade'},
+                    labels={'Nome do Professor': '', 'Quantidade de Aulas': ''},
                     color='Quantidade de Aulas'
+                )
+                
+                # Remover os títulos dos eixos
+                fig.update_layout(
+                    xaxis_title=None,
+                    yaxis_title=None,
+                    coloraxis_showscale=False  # Remover a escala de cor
                 )
                 st.plotly_chart(fig, use_container_width=True)
             except Exception as e:
@@ -175,23 +182,47 @@ def exibir_pagina_aulas(data_inicio=None, data_fim=None):
                 st.error(f"Erro ao gerar gráfico de aulas por situação: {str(e)}")
         
         # Gráfico de faltas por professor
-        if 'Nome do Professor' in df_exibir.columns and 'Faltas' in df_exibir.columns:
+        if 'Nome do Professor' in df_exibir.columns and 'Faltas' in df_exibir.columns and 'Presenças' in df_exibir.columns:
             try:
-                # Agrupar faltas por professor
-                faltas_professor = df_exibir.groupby('Nome do Professor')['Faltas'].sum().reset_index()
-                faltas_professor = faltas_professor.sort_values('Faltas', ascending=False)
+                # Agrupar faltas e presenças por professor
+                dados_professor = df_exibir.groupby('Nome do Professor').agg({
+                    'Faltas': 'sum',
+                    'Presenças': 'sum'
+                }).reset_index()
                 
+                # Calcular o total de alunos e o percentual de faltas
+                dados_professor['Total Alunos'] = dados_professor['Faltas'] + dados_professor['Presenças']
+                dados_professor['Percentual de Faltas'] = (dados_professor['Faltas'] / dados_professor['Total Alunos'] * 100).round(1)
+                
+                # Ordenar pelo percentual de faltas (decrescente)
+                dados_professor = dados_professor.sort_values('Percentual de Faltas', ascending=False)
+                
+                # Criar o gráfico de barras com percentual
                 fig = px.bar(
-                    faltas_professor,
+                    dados_professor,
                     x='Nome do Professor',
-                    y='Faltas',
-                    title='Total de Faltas por Professor',
-                    labels={'Nome do Professor': 'Professor', 'Faltas': 'Número de Faltas'},
-                    color='Faltas'
+                    y='Percentual de Faltas',
+                    title='Percentual de Faltas por Professor',
+                    labels={'Nome do Professor': '', 'Percentual de Faltas': ''},
+                    color='Percentual de Faltas',
+                    text='Percentual de Faltas'  # Mostrar o valor no gráfico
                 )
+                
+                # Ajustar o layout para mostrar o percentual com símbolo %
+                fig.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+                fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
+                
+                # Ajustar o eixo Y para percentual e remover títulos dos eixos
+                fig.update_layout(
+                    yaxis=dict(ticksuffix='%'),
+                    xaxis_title=None,
+                    yaxis_title=None,
+                    coloraxis_showscale=False  # Remover a escala de cor
+                )
+                
                 st.plotly_chart(fig, use_container_width=True)
             except Exception as e:
-                st.error(f"Erro ao gerar gráfico de faltas por professor: {str(e)}")
+                st.error(f"Erro ao gerar gráfico de percentual de faltas por professor: {str(e)}")
     else:
         if 'aulas_filtradas' in st.session_state:
             st.info("Não foram encontradas aulas para o período e situação selecionados.")
