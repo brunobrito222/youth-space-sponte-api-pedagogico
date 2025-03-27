@@ -136,7 +136,7 @@ class SponteAPI:
                           todas_paginas: bool = False) -> Optional[Dict]:
         """
         Obtém contas a receber com base nos filtros fornecidos
-        :param situacao: 0 para pendentes, 1 para pagas
+        :param situacao: 0 para pendentes, 1 para pagas, -1 para todas
         :param aluno_id: ID do aluno para filtrar
         :param data_vencimento_inicio: Data inicial de vencimento (YYYY-MM-DD)
         :param data_vencimento_fim: Data final de vencimento (YYYY-MM-DD)

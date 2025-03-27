@@ -46,7 +46,7 @@ st.set_page_config(
     page_title="Dashboard Sponte",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Ocultar menu nativo do Streamlit

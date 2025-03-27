@@ -24,7 +24,7 @@ def formatar_colunas_data(df):
     # Formatar cada coluna de data
     for col in colunas_data:
         try:
-            df[col] = pd.to_datetime(df[col], errors='coerce', dayfirst=True)
+            df[col] = pd.to_datetime(df[col], errors='coerce')
             df[col] = df[col].dt.strftime('%d/%m/%Y')
         except Exception as e:
             print(f"Erro ao formatar coluna {col}: {e}")
@@ -110,81 +110,111 @@ def carregar_dados_aulas(data_inicio, data_fim, situacao=1):
     return df_aulas
 
 # Função para carregar dados financeiros de uma única turma
-@st.cache_data(ttl=3600)  # Cache válido por 1 hora
-def carregar_dados_financeiros_turma_individual(turma_id, alunos_lista):
+@st.cache_data(ttl=3600, show_spinner=False, hash_funcs={dict: lambda x: str(sorted(x.items())) if isinstance(x, dict) else str(x)})  # Cache válido por 1 hora
+def carregar_dados_financeiros_turma_individual(turma_id, alunos_lista, data_inicio=None, data_fim=None):
     """
     Carrega os dados financeiros para uma turma específica
     
     Args:
         turma_id (int): ID da turma
-        alunos_lista (list/dict): Lista ou dicionário de alunos da turma
+        alunos_lista (list): Lista de IDs de alunos ou objetos de alunos da turma
+        data_inicio (str, optional): Data de início no formato YYYY-MM-DD. Se None, usa o primeiro dia do mês atual.
+        data_fim (str, optional): Data de fim no formato YYYY-MM-DD. Se None, usa o último dia do mês atual.
         
     Returns:
-        float: Valor total da turma
-        list: Lista de detalhes financeiros por aluno
+        float: Valor total da turma (soma de pagos e pendentes)
+        list: Lista de detalhes financeiros por aluno com valores pagos e pendentes
     """
+    # Log para debug
+    print(f"Carregando dados financeiros para turma {turma_id} com {len(alunos_lista) if isinstance(alunos_lista, list) else 'N/A'} alunos")
+    
     if not alunos_lista:
         return 0, []
     
-    # Importar API
-    from sponte_api_financeiro import SponteAPI
+    # Inicializar API
+    api = SponteAPI()
     
-    # Define o período do mês atual
-    hoje = date.today()
-    primeiro_dia_mes = date(hoje.year, hoje.month, 1)
-    if hoje.month == 12:
-        ultimo_dia_mes = date(hoje.year + 1, 1, 1) - timedelta(days=1)
-    else:
-        ultimo_dia_mes = date(hoje.year, hoje.month + 1, 1) - timedelta(days=1)
-    
-    # Formata as datas para a API (YYYY-MM-DD)
-    data_inicio = primeiro_dia_mes.strftime('%Y-%m-%d')
-    data_fim = ultimo_dia_mes.strftime('%Y-%m-%d')
+    # Define o período do mês atual se não fornecido
+    if data_inicio is None or data_fim is None:
+        hoje = date.today()
+        primeiro_dia_mes = date(hoje.year, hoje.month, 1)
+        if hoje.month == 12:
+            ultimo_dia_mes = date(hoje.year + 1, 1, 1) - timedelta(days=1)
+        else:
+            ultimo_dia_mes = date(hoje.year, hoje.month + 1, 1) - timedelta(days=1)
+        
+        # Formata as datas para a API (YYYY-MM-DD)
+        data_inicio = data_inicio or primeiro_dia_mes.strftime('%Y-%m-%d')
+        data_fim = data_fim or ultimo_dia_mes.strftime('%Y-%m-%d')
     
     # Lista de IDs de alunos nesta turma
     alunos_ids = []
     if isinstance(alunos_lista, list):
-        # Extrai alunoID de cada aluno na lista
-        for aluno in alunos_lista:
-            if isinstance(aluno, dict) and 'alunoID' in aluno:
+        # Verifica se a lista contém IDs ou objetos de alunos
+        if alunos_lista and isinstance(alunos_lista[0], dict) and 'alunoID' in alunos_lista[0]:
+            # Extrai alunoID de cada aluno na lista
+            for aluno in alunos_lista:
                 alunos_ids.append(aluno['alunoID'])
+        else:
+            # Assume que a lista já contém IDs
+            alunos_ids = alunos_lista
     elif isinstance(alunos_lista, dict):
-        # Se for um dicionário, tenta pegar os IDs diretamente
-        alunos_ids = [aluno['alunoID'] for aluno in alunos_lista.values() 
-                    if isinstance(aluno, dict) and 'alunoID' in aluno]
+        # Se for um dicionário, extrair IDs
+        for aluno_id in alunos_lista.keys():
+            alunos_ids.append(aluno_id)
     
     # Valor total da turma
-    valor_turma = 0
+    valor_turma_total = 0
     
     # Detalhe dos valores por aluno
     detalhes_alunos = []
-    
-    # API Direta
-    api = SponteAPI()
     
     # Carregar dados de alunos para obter nomes
     df_alunos = carregar_dados_alunos()
     
     # Para cada aluno, busca o valor
     for aluno_id in alunos_ids:
-        # Obter dados financeiros do aluno para o mês atual
-        contas = api.get_contas_receber(
+        # Obter dados financeiros PAGOS do aluno para o mês atual (situacao=1)
+        contas_pagas = api.get_contas_receber(
+            situacao=1,  # Contas pagas
             aluno_id=aluno_id,
             data_vencimento_inicio=data_inicio,
             data_vencimento_fim=data_fim
         )
         
-        # Calcular o valor total das contas do aluno
-        valor_aluno = 0
-        if isinstance(contas, dict) and 'listDados' in contas and contas['listDados']:
-            for conta in contas['listDados']:
+        # Obter dados financeiros PENDENTES do aluno para o mês atual (situacao=0)
+        contas_pendentes = api.get_contas_receber(
+            situacao=0,  # Contas pendentes
+            aluno_id=aluno_id,
+            data_vencimento_inicio=data_inicio,
+            data_vencimento_fim=data_fim
+        )
+        
+        # Calcular o valor total das contas PAGAS do aluno
+        valor_pago = 0
+        if isinstance(contas_pagas, dict) and 'listDados' in contas_pagas and contas_pagas['listDados']:
+            for conta in contas_pagas['listDados']:
                 # O valor está em parcelas, que está dentro de cada item em listDados
                 if 'parcelas' in conta and isinstance(conta['parcelas'], list):
                     for parcela in conta['parcelas']:
                         if isinstance(parcela, dict) and 'valor' in parcela:
                             try:
                                 valor_parcela = float(parcela['valor'])
-                                valor_aluno += valor_parcela
+                                valor_pago += valor_parcela
+                            except (ValueError, TypeError):
+                                continue
+        
+        # Calcular o valor total das contas PENDENTES do aluno
+        valor_pendente = 0
+        if isinstance(contas_pendentes, dict) and 'listDados' in contas_pendentes and contas_pendentes['listDados']:
+            for conta in contas_pendentes['listDados']:
+                # O valor está em parcelas, que está dentro de cada item em listDados
+                if 'parcelas' in conta and isinstance(conta['parcelas'], list):
+                    for parcela in conta['parcelas']:
+                        if isinstance(parcela, dict) and 'valor' in parcela:
+                            try:
+                                valor_parcela = float(parcela['valor'])
+                                valor_pendente += valor_parcela
                             except (ValueError, TypeError):
                                 continue
         
@@ -198,17 +228,21 @@ def carregar_dados_financeiros_turma_individual(turma_id, alunos_lista):
             if not aluno_row.empty and 'nomeAluno' in aluno_row.columns:
                 nome_aluno = aluno_row['nomeAluno'].iloc[0]
         
+        # Calcular valor total do aluno (pago + pendente)
+        valor_total_aluno = valor_pago + valor_pendente
+        
         # Adiciona o valor do aluno ao total da turma
-        valor_turma += valor_aluno
+        valor_turma_total += valor_total_aluno
         
         # Adiciona detalhe do aluno
         detalhes_alunos.append({
             'id': aluno_id,
             'nome': nome_aluno,
-            'valor': valor_aluno
+            'valor_pago': valor_pago,
+            'valor_pendente': valor_pendente
         })
     
-    return valor_turma, detalhes_alunos
+    return valor_turma_total, detalhes_alunos
 
 # Função para carregar dados básicos para o dashboard com cache
 @st.cache_data(ttl=3600)  # Cache válido por 1 hora

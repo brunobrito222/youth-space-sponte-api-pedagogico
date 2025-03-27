@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from utils.cache import carregar_dados_turmas, carregar_dados_basicos, carregar_dados_financeiros_turma_individual
 from datetime import datetime, timedelta
 import numpy as np
+import io
 
 def exibir_pagina_turmas():
     st.header("Gestão de Turmas")
@@ -95,7 +96,7 @@ def exibir_pagina_turmas():
             # Tentar extrair da dataInicio primeiro, se disponível
             if pd.notna(row.get('dataInicio')):
                 try:
-                    data = pd.to_datetime(row['dataInicio'])
+                    data = pd.to_datetime(row['dataInicio'], dayfirst=True)
                     return dias_semana[data.weekday()]
                 except:
                     pass
@@ -103,7 +104,7 @@ def exibir_pagina_turmas():
             # Se não conseguir, tentar extrair da dataTermino
             if pd.notna(row.get('dataTermino')):
                 try:
-                    data = pd.to_datetime(row['dataTermino'])
+                    data = pd.to_datetime(row['dataTermino'], dayfirst=True)
                     return dias_semana[data.weekday()]
                 except:
                     pass
@@ -142,12 +143,24 @@ def exibir_pagina_turmas():
         
         # Opção para download
         csv = df_exibir.to_csv(index=False).encode('utf-8')
+        with io.BytesIO() as excel_file:
+            df_exibir.to_excel(excel_file, index=False)
+            excel = excel_file.getvalue()
+
         st.download_button(
             "Baixar dados como CSV",
             csv,
             "turmas.csv",
-            "text/csv",
             key='download-turmas-csv'
+        )
+        
+        # Botão para download em Excel
+        st.download_button(
+            "Baixar dados como Excel",
+            excel,
+            "turmas.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key='download-turmas-excel'
         )
         
         # Seção para consultar valores financeiros
@@ -179,9 +192,16 @@ def exibir_pagina_turmas():
                         # Obter a lista de alunos da turma
                         alunos = df_turmas.loc[idx, 'alunos'] if 'alunos' in df_turmas.columns else []
                         
+                        # Extrair apenas os IDs dos alunos para melhorar o cache
+                        alunos_ids = []
+                        if isinstance(alunos, list):
+                            for aluno in alunos:
+                                if isinstance(aluno, dict) and 'alunoID' in aluno:
+                                    alunos_ids.append(aluno['alunoID'])
+                        
                         # Carregar dados financeiros para esta turma
                         valor_total, detalhes_alunos = carregar_dados_financeiros_turma_individual(
-                            turma_selecionada[0], alunos
+                            turma_selecionada[0], alunos_ids
                         )
                         
                         # Exibir valor total da turma
@@ -190,29 +210,38 @@ def exibir_pagina_turmas():
                             f"R$ {valor_total:.2f}".replace('.', ',')
                         )
                         
-                        # Exibir detalhes dos alunos em um expander
-                        with st.expander("Ver detalhes por aluno"):
-                            if detalhes_alunos:
-                                # Criar DataFrame com os detalhes
-                                df_detalhes = pd.DataFrame(detalhes_alunos)
-                                df_detalhes.columns = ["ID do Aluno", "Nome do Aluno", "Valor"]
-                                
-                                # Formatar coluna de valor
-                                df_detalhes["Valor"] = df_detalhes["Valor"].apply(
-                                    lambda x: f"R$ {x:.2f}".replace('.', ',')
-                                )
-                                
-                                # Exibir DataFrame
-                                st.dataframe(df_detalhes, hide_index=True)
-                            else:
-                                st.info("Não foram encontrados detalhes financeiros para os alunos desta turma.")
+                        # Exibir detalhes dos alunos
+                        st.write("Detalhes por aluno")
+
+                        if detalhes_alunos:
+                            # Criar DataFrame com os detalhes
+                            df_detalhes = pd.DataFrame(detalhes_alunos)
+                            df_detalhes.columns = ["ID do Aluno", "Nome do Aluno", "Valor Pago", "Valor Pendente"]
+                            
+                            # Formatar colunas de valor
+                            df_detalhes["Valor Pago"] = df_detalhes["Valor Pago"].apply(
+                                lambda x: f"R$ {x:.2f}".replace('.', ',')
+                            )
+                            df_detalhes["Valor Pendente"] = df_detalhes["Valor Pendente"].apply(
+                                lambda x: f"R$ {x:.2f}".replace('.', ',')
+                            )
+                            
+                            # Adicionar coluna de valor total
+                            df_detalhes["Valor Total"] = df_detalhes.apply(
+                                lambda row: f"R$ {float(row['Valor Pago'].replace('R$ ', '').replace(',', '.')) + float(row['Valor Pendente'].replace('R$ ', '').replace(',', '.')):.2f}".replace('.', ','),
+                                axis=1
+                            )
+                            
+                            # Exibir DataFrame
+                            st.dataframe(df_detalhes, hide_index=True)
+                        else:
+                            st.info("Não foram encontrados detalhes financeiros para os alunos desta turma.")
         
         # Análises adicionais
         st.subheader("Análises")
         
         # Distribuição por modalidade
         if 'modalidade' in df_turmas.columns:
-            st.write("Distribuição de Turmas por Modalidade")
             
             # Preparar dados para o gráfico
             modalidade_counts = df_turmas.groupby('modalidade').agg({
@@ -246,7 +275,8 @@ def exibir_pagina_turmas():
             
             # Exibir gráfico
             st.plotly_chart(fig, use_container_width=True)
-            
+
+
             # Exibir média de alunos por modalidade específica
             st.write("Média de Alunos por Modalidade")
             
