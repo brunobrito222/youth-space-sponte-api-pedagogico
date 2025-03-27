@@ -92,6 +92,25 @@ def exibir_pagina_aulas(data_inicio=None, data_fim=None):
                 st.session_state.df_aulas['num_presencas'] = presenças
                 st.session_state.df_aulas['num_faltas'] = faltas
             
+            # Criar identificador único para cada aula (combinação de turmaID e dataAula)
+            if 'turmaID' in st.session_state.df_aulas.columns and 'dataAula' in st.session_state.df_aulas.columns:
+                # Converter dataAula para string caso não seja
+                if st.session_state.df_aulas['dataAula'].dtype != 'object':
+                    st.session_state.df_aulas['dataAula'] = st.session_state.df_aulas['dataAula'].astype(str)
+                
+                # Criar a coluna de ID único
+                st.session_state.df_aulas['aula_id_unico'] = st.session_state.df_aulas['turmaID'].astype(str) + '_' + st.session_state.df_aulas['dataAula']
+                
+                # Remover duplicatas mantendo a primeira ocorrência
+                contagem_antes = len(st.session_state.df_aulas)
+                st.session_state.df_aulas = st.session_state.df_aulas.drop_duplicates(subset=['aula_id_unico'])
+                contagem_depois = len(st.session_state.df_aulas)
+                
+                # Informar sobre as duplicatas removidas (apenas para debug)
+                duplicatas_removidas = contagem_antes - contagem_depois
+                if duplicatas_removidas > 0:
+                    st.session_state.duplicatas_removidas = duplicatas_removidas
+            
             st.session_state.aulas_filtradas = True
     
     # Exibir dados das aulas
@@ -99,7 +118,7 @@ def exibir_pagina_aulas(data_inicio=None, data_fim=None):
         # Exibir contagem de aulas
         st.subheader(f"Total de aulas: {len(st.session_state.df_aulas)}")
         
-        # Selecionar colunas relevantes para exibição
+        # Selecionar colunas relevantes para exibição (excluindo a coluna de ID único)
         colunas_exibir = ['dataAula', 'turmaID', 'nomeProfessor', 'situacao', 'num_presencas', 'num_faltas']
         colunas_disponiveis = [col for col in colunas_exibir if col in st.session_state.df_aulas.columns]
         df_exibir = st.session_state.df_aulas[colunas_disponiveis].copy()

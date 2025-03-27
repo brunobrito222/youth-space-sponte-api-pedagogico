@@ -313,26 +313,27 @@ def exibir_pagina_turmas():
                     fill_value=0
                 )
                 
-                # Ordenar os dias da semana corretamente
-                ordem_dias = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo']
+                # Ordenar os dias da semana corretamente (sem domingo)
+                ordem_dias = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
                 heatmap_pivot = heatmap_pivot.reindex(columns=ordem_dias)  # Reordenar colunas em vez de linhas
                 
                 # Criar o mapa de calor
                 fig_heatmap = px.imshow(
                     heatmap_pivot,
-                    labels=dict(x="Dia da Semana", y="Modalidade", color="Número de Turmas"),  # Invertido
+                    labels=dict(x="Dia da Semana", y="Modalidade", color=""),  # Rótulo vazio para a cor
                     x=heatmap_pivot.columns,
                     y=heatmap_pivot.index,
                     color_continuous_scale="Viridis",
                     title="Mapa de Calor: Turmas por Modalidade e Dia da Semana",
-                    height=500
+                    #height=500
                 )
                 
                 # Ajustar layout
                 fig_heatmap.update_layout(
                     xaxis_title=None,  # Remover título do eixo X
                     yaxis_title=None,  # Remover título do eixo Y
-                    xaxis={'side': 'top'}
+                    xaxis={'side': 'top'},
+                    coloraxis_showscale=False  # Ocultar a legenda de cores
                 )
                 
                 # Adicionar anotações com os valores
@@ -341,11 +342,14 @@ def exibir_pagina_turmas():
                         valor = heatmap_pivot.iloc[i, j]
                         if valor > 0:  # Só mostrar valores maiores que zero
                             fig_heatmap.add_annotation(
-                                x=dia,  # Invertido
-                                y=modalidade,  # Invertido
+                                x=dia,
+                                y=modalidade,
                                 text=str(int(valor)),
                                 showarrow=False,
-                                font=dict(color="white" if valor > 3 else "black")
+                                font=dict(
+                                    color="white" if valor < 20 else "black",
+                                    size=14  # Aumentar o tamanho da fonte
+                                )
                             )
                 
                 # Exibir o mapa de calor
