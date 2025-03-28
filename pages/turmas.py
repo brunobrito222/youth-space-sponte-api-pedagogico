@@ -47,6 +47,66 @@ def exibir_pagina_turmas():
             )
         else:
             modalidades_selecionadas = []
+    
+    # Nova linha de filtros para Curso, Estágio e Professor
+    col3, col4, col5 = st.columns(3)
+    
+    with col3:
+        # Filtro de Curso
+        if not df_turmas_todas.empty and 'nomeCurso' in df_turmas_todas.columns:
+            # Obter lista de cursos únicos
+            cursos = df_turmas_todas['nomeCurso'].dropna().unique().tolist()
+            cursos.sort()  # Ordenar alfabeticamente
+            
+            # Adicionar opção "Todos" no início da lista
+            cursos_opcoes = ["Todos"] + cursos
+            
+            # Select box para cursos
+            curso_selecionado = st.selectbox(
+                "Curso", 
+                options=cursos_opcoes,
+                index=0  # Seleciona "Todos" por padrão
+            )
+        else:
+            curso_selecionado = "Todos"
+    
+    with col4:
+        # Filtro de Estágio
+        if not df_turmas_todas.empty and 'nomeEstagio' in df_turmas_todas.columns:
+            # Obter lista de estágios únicos
+            estagios = df_turmas_todas['nomeEstagio'].dropna().unique().tolist()
+            estagios.sort()  # Ordenar alfabeticamente
+            
+            # Adicionar opção "Todos" no início da lista
+            estagios_opcoes = ["Todos"] + estagios
+            
+            # Select box para estágios
+            estagio_selecionado = st.selectbox(
+                "Estágio", 
+                options=estagios_opcoes,
+                index=0  # Seleciona "Todos" por padrão
+            )
+        else:
+            estagio_selecionado = "Todos"
+    
+    with col5:
+        # Filtro de Professor
+        if not df_turmas_todas.empty and 'nomeFuncionario' in df_turmas_todas.columns:
+            # Obter lista de professores únicos
+            professores = df_turmas_todas['nomeFuncionario'].dropna().unique().tolist()
+            professores.sort()  # Ordenar alfabeticamente
+            
+            # Adicionar opção "Todos" no início da lista
+            professores_opcoes = ["Todos"] + professores
+            
+            # Select box para professores
+            professor_selecionado = st.selectbox(
+                "Professor", 
+                options=professores_opcoes,
+                index=0  # Seleciona "Todos" por padrão
+            )
+        else:
+            professor_selecionado = "Todos"
 
     # Carregar dados de turmas usando a função com cache apenas se a situação for diferente de 1 (Abertas)
     with st.spinner("Carregando dados de turmas..."):
@@ -63,6 +123,20 @@ def exibir_pagina_turmas():
         # Filtrar por modalidades selecionadas
         if modalidades_selecionadas and not df_turmas.empty:
             df_turmas = df_turmas[df_turmas['modalidade'].isin(modalidades_selecionadas)]
+        
+        # Aplicar filtros adicionais
+        if not df_turmas.empty:
+            # Filtrar por curso selecionado
+            if curso_selecionado != "Todos" and 'nomeCurso' in df_turmas.columns:
+                df_turmas = df_turmas[df_turmas['nomeCurso'] == curso_selecionado]
+            
+            # Filtrar por estágio selecionado
+            if estagio_selecionado != "Todos" and 'nomeEstagio' in df_turmas.columns:
+                df_turmas = df_turmas[df_turmas['nomeEstagio'] == estagio_selecionado]
+            
+            # Filtrar por professor selecionado
+            if professor_selecionado != "Todos" and 'nomeFuncionario' in df_turmas.columns:
+                df_turmas = df_turmas[df_turmas['nomeFuncionario'] == professor_selecionado]
     
     # Exibir dados e análises
     if not df_turmas.empty:
