@@ -165,6 +165,8 @@ def carregar_dados_financeiros_turma_individual(turma_id, alunos_lista, data_ini
     
     # Valor total da turma
     valor_turma_total = 0
+    valor_pago_turma = 0
+    valor_pendente_turma = 0
     
     # Detalhe dos valores por aluno
     detalhes_alunos = []
@@ -231,6 +233,12 @@ def carregar_dados_financeiros_turma_individual(turma_id, alunos_lista, data_ini
         # Calcular valor total do aluno (pago + pendente)
         valor_total_aluno = valor_pago + valor_pendente
         
+        # Calcula o valor total pago da turma
+        valor_pago_turma += valor_pago
+        
+        # Calcula o valor total pendente da turma
+        valor_pendente_turma += valor_pendente
+        
         # Adiciona o valor do aluno ao total da turma
         valor_turma_total += valor_total_aluno
         
@@ -242,7 +250,7 @@ def carregar_dados_financeiros_turma_individual(turma_id, alunos_lista, data_ini
             'valor_pendente': valor_pendente
         })
     
-    return valor_turma_total, detalhes_alunos
+    return valor_turma_total, valor_pago_turma, valor_pendente_turma, detalhes_alunos
 
 # Função para carregar dados básicos para o dashboard com cache
 @st.cache_data(ttl=3600)  # Cache válido por 1 hora

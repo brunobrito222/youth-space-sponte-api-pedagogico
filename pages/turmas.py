@@ -274,16 +274,28 @@ def exibir_pagina_turmas():
                                     alunos_ids.append(aluno['alunoID'])
                         
                         # Carregar dados financeiros para esta turma
-                        valor_total, detalhes_alunos = carregar_dados_financeiros_turma_individual(
+                        valor_total, valor_pago, valor_pendente, detalhes_alunos = carregar_dados_financeiros_turma_individual(
                             turma_selecionada[0], alunos_ids
                         )
                         
                         # Exibir valor total da turma
                         st.metric(
-                            f"Valor Total da Turma {turma_selecionada[1]} este mês:",
+                            f"Valor TOTAL este mês:",
                             f"R$ {valor_total:.2f}".replace('.', ',')
                         )
                         
+                        # Exibir valor Pago da turma
+                        st.metric(
+                            f"Valor PAGO este mês:",
+                            f"R$ {valor_pago:.2f}".replace('.', ',')
+                        )
+                        
+                        # Exibir valor Pendente da turma
+                        st.metric(
+                            f"Valor PENDENTE este mês:",
+                            f"R$ {valor_pendente:.2f}".replace('.', ',')
+                        )   
+
                         # Exibir detalhes dos alunos
                         st.write("Detalhes por aluno")
 
